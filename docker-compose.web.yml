@@ -1,0 +1,63 @@
+services:
+  web:
+    # Derived image with NVIDIA/GL runtime fixes baked in (see docker/Dockerfile).
+    # Build once with:  docker build -f docker/Dockerfile -t sam3d_gs:v0.1-fixed .
+    image: sam3d_gs:v0.1-fixed
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    working_dir: /opt/sam3d_gs
+    command:
+      - python
+      - -m
+      - uvicorn
+      - web.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "1"
+    environment:
+      SAM3D_PROJECT_ROOT: /opt/sam3d_gs
+      SAM3D_JOBS_ROOT: /opt/sam3d_gs/data/jobs
+      HF_HOME: /root/.cache/huggingface
+      TORCH_HOME: /root/.cache/torch
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - type: bind
+        source: ./web
+        target: /opt/sam3d_gs/web
+        read_only: true
+      - type: bind
+        source: ./data/jobs
+        target: /opt/sam3d_gs/data/jobs
+      - type: bind
+        source: ./submodule/Sam-3d-objects/checkpoints
+        target: /opt/sam3d_gs/submodule/Sam-3d-objects/checkpoints
+      - type: bind
+        source: ./submodule/Prompt-Inpaint/checkpoints
+        target: /opt/sam3d_gs/submodule/Prompt-Inpaint/checkpoints
+      - type: bind
+        source: ${HOME}/.cache/huggingface
+        target: /root/.cache/huggingface
+      - type: bind
+        source: ${HOME}/.cache/torch
+        target: /root/.cache/torch
+    gpus: all
+    shm_size: "8gb"
+    init: true
+    stop_grace_period: 30s
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

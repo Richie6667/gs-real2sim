@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f1e8" />
+    <meta name="color-scheme" content="light" />
+    <title>Real2Sim · 拍照生成 3D</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="/" aria-label="返回新任务">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>REAL<span>2</span>SIM</span>
+        </a>
+        <span class="private-badge"><i aria-hidden="true"></i>本机生成</span>
+      </header>
+
+      <main>
+        <section class="hero" aria-labelledby="page-title">
+          <p class="eyebrow">PHOTO TO 3D OBJECT</p>
+          <h1 id="page-title">拍一张照片，<br /><em>生成真实物体。</em></h1>
+          <p class="hero-copy">手机拍摄后，照片会发送到你的 GPU 电脑，依次完成抠图、场景重建与 3D 物体生成。</p>
+        </section>
+
+        <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+        <section id="create-section" class="workflow-grid" aria-label="新建生成任务">
+          <article class="card capture-card">
+            <div class="card-heading">
+              <span class="step-number">01</span>
+              <div>
+                <h2>拍摄物体</h2>
+                <p>使用后置摄像头，或从手机相册选择</p>
+              </div>
+            </div>
+
+            <div class="shooting-guide" role="note">
+              <div class="guide-icon" aria-hidden="true">
+                <span class="guide-object"></span>
+                <span class="guide-surface"></span>
+              </div>
+              <p><strong>保留完整桌面背景</strong><br />物体尽量不超过画面的 20%，避免贴边和遮挡。</p>
+            </div>
+
+            <div id="camera-frame" class="camera-frame is-empty">
+              <video id="camera-video" playsinline autoplay muted aria-label="摄像头实时画面"></video>
+              <img id="photo-preview" alt="待上传照片预览" />
+              <canvas id="capture-canvas" hidden></canvas>
+              <div id="camera-placeholder" class="camera-placeholder">
+                <span class="focus-corners" aria-hidden="true"></span>
+                <strong>准备拍摄</strong>
+                <small id="camera-hint">建议竖屏，镜头与桌面保持稳定</small>
+              </div>
+              <div class="frame-label" aria-hidden="true">物体建议区域 &lt;20%</div>
+            </div>
+
+            <div class="camera-actions">
+              <button id="start-camera" class="button button-primary" type="button">
+                <span aria-hidden="true">◎</span> 开启后置摄像头
+              </button>
+              <button id="capture-photo" class="button button-primary" type="button" hidden>
+                <span class="shutter-icon" aria-hidden="true"></span> 拍摄照片
+              </button>
+              <button id="retake-photo" class="button button-secondary" type="button" hidden>重新拍摄</button>
+              <label id="file-picker-label" class="button button-secondary file-picker">
+                <span aria-hidden="true">＋</span> 系统相机 / 相册
+                <input id="file-picker" type="file" accept="image/*" capture="environment" />
+              </label>
+            </div>
+            <p id="camera-status" class="field-help" aria-live="polite"></p>
+          </article>
+
+          <article class="card details-card">
+            <div class="card-heading">
+              <span class="step-number">02</span>
+              <div>
+                <h2>描述并生成</h2>
+                <p>名称用于识别照片中的目标物体</p>
+              </div>
+            </div>
+
+            <form id="job-form" novalidate>
+              <label class="field-label" for="object-prompt">英文物体名称 <span>必填</span></label>
+              <div class="prompt-field">
+                <input
+                  id="object-prompt"
+                  name="prompt"
+                  type="text"
+                  inputmode="text"
+                  autocomplete="off"
+                  autocapitalize="none"
+                  spellcheck="false"
+                  maxlength="80"
+                  placeholder="例如：ceramic mug"
+                  required
+                />
+                <span>EN</span>
+              </div>
+              <p id="prompt-error" class="field-error" role="alert"></p>
+
+              <div class="ready-checklist" aria-label="拍摄检查清单">
+                <div><i aria-hidden="true">✓</i><span>照片清晰、光线均匀</span></div>
+                <div><i aria-hidden="true">✓</i><span>桌面和周围背景完整可见</span></div>
+                <div><i aria-hidden="true">✓</i><span>物体面积小于画面的 20%</span></div>
+              </div>
+
+              <button id="submit-job" class="button button-generate" type="submit" disabled>
+                <span>开始生成 3D</span><b aria-hidden="true">→</b>
+              </button>
+              <p class="submit-note">生成过程可能需要数分钟。提交后可保持页面打开查看进度。</p>
+            </form>
+          </article>
+        </section>
+
+        <section id="job-section" class="job-panel" aria-labelledby="job-title" hidden>
+          <div class="job-topline">
+            <div>
+              <p class="eyebrow">GENERATION TASK</p>
+              <h2 id="job-title">正在生成你的 3D 物体</h2>
+            </div>
+            <span id="status-pill" class="status-pill">排队中</span>
+          </div>
+
+          <div class="progress-card">
+            <div class="progress-meta">
+              <div>
+                <strong id="progress-percent">0%</strong>
+                <span id="progress-message">任务已提交，等待 GPU</span>
+              </div>
+              <small id="queue-position"></small>
+            </div>
+            <div class="progress-track" role="progressbar" aria-label="生成进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span id="progress-bar"></span>
+            </div>
+            <ol class="stage-list">
+              <li data-stage="stage1"><i>1</i><span>目标分割<small>Prompt-Inpaint</small></span></li>
+              <li data-stage="stage2"><i>2</i><span>场景重建<small>AnySplat</small></span></li>
+              <li data-stage="stage3"><i>3</i><span>物体生成<small>SAM 3D</small></span></li>
+            </ol>
+            <p class="job-reference">任务 ID：<code id="job-id"></code></p>
+          </div>
+
+          <div id="error-card" class="error-card" hidden>
+            <strong>生成遇到问题</strong>
+            <p id="error-summary"></p>
+          </div>
+
+          <section id="preview-section" class="result-section" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">PROCESS PREVIEW</p>
+                <h3>处理预览</h3>
+              </div>
+              <span>点击图片查看原图</span>
+            </div>
+            <div id="preview-grid" class="preview-grid"></div>
+          </section>
+
+          <section id="artifact-section" class="result-section" hidden>
+            <div class="section-heading artifact-heading">
+              <div>
+                <p class="eyebrow">OUTPUT FILES</p>
+                <h3>生成产物</h3>
+              </div>
+              <a id="download-all" class="button button-primary compact" href="#">下载全部 ZIP</a>
+            </div>
+            <div id="artifact-list" class="artifact-list"></div>
+          </section>
+
+          <div class="job-footer-actions">
+            <button id="new-job" class="button button-secondary" type="button">拍摄新物体</button>
+            <button id="retry-status" class="button button-secondary" type="button" hidden>重新获取状态</button>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>GS REAL2SIM</span>
+        <p>照片与结果仅保存在你的生成电脑中</p>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -21,7 +21,9 @@ DEFAULT_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${1:-${DEFAULT_REPO}}"
 HF_CACHE="${2:-${HF_HOME:-${HOME}/.cache/huggingface}}"
 TORCH_CACHE="${TORCH_HOME:-${HOME}/.cache/torch}"
-IMAGE="${SAM3D_IMAGE:-sam3d-gs:latest}"
+# Default to the derived image with NVIDIA/GL runtime fixes baked in
+# (docker/Dockerfile). Build it once: docker build -f docker/Dockerfile -t sam3d_gs:v0.1-fixed .
+IMAGE="${SAM3D_IMAGE:-sam3d_gs:v0.1-fixed}"
 
 REPO="$(realpath "${REPO}")"
 HF_CACHE="$(realpath -m "${HF_CACHE}")"
