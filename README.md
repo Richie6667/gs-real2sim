@@ -10,6 +10,8 @@
 
 > This repo was originally forked from [xyys2003/sam3d_gs](https://github.com/xyys2003/sam3d_gs).
 
+[Mobile web capture and asset generation guide (中文)](MOBILE_WEB_zh.md)
+
 ------
 
 ## **Abstract**

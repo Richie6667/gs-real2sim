@@ -10,6 +10,8 @@
 
 > 本仓库最初 fork 自 [xyys2003/sam3d_gs](https://github.com/xyys2003/sam3d_gs)。
 
+[手机网页拍照生成 MuJoCo 资产指南](MOBILE_WEB_zh.md)
+
 ------
 
 ## **摘要**
